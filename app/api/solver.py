@@ -3,6 +3,8 @@ from flask_cors import cross_origin
 from . import api
 import pickle
 import os
+import time
+import random
 
 def prefix_contains(prefix_str, word_dictionary):
     for word in word_dictionary:
@@ -13,15 +15,18 @@ def prefix_contains(prefix_str, word_dictionary):
     
     
 
-def find_words(word, word_dictionary, letters, gold_letter, result_list):
+def find_words(word, word_dictionary, letters, gold_letter, result_list, start_time):
     # base case 1: we find a word in the dictionary that contains the gold letter
     # we've already pruned words < length of 4 so don't have to check word length
+    if time.time() - start_time >= 10:
+        return
+    
     if word in word_dictionary and gold_letter in word:
         result_list.append(word)
     
     if prefix_contains(word, word_dictionary):
         for letter in letters:
-            find_words(word + letter, word_dictionary, letters, gold_letter, result_list)
+            find_words(word + letter, word_dictionary, letters, gold_letter, result_list, start_time)
         
     else:
         return
@@ -29,6 +34,7 @@ def find_words(word, word_dictionary, letters, gold_letter, result_list):
 @api.route('/solve', methods=['POST', 'OPTIONS'])
 @cross_origin()
 def solve():
+    start_time = time.time()
     req_body = request.json
     
     SITE_ROOT = os.path.realpath(os.path.dirname(__file__))
@@ -43,6 +49,8 @@ def solve():
     
     words = []
     
-    find_words("", word_dictionary, letters, gold_letter, result_list=words)
+    random.shuffle(letters)
+    
+    find_words("", word_dictionary, letters, gold_letter, result_list=words, start_time=start_time)
     
     return jsonify(words)
